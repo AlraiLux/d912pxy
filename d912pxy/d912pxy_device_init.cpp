@@ -188,7 +188,8 @@ void d912pxy_device::InitSingletons()
 	d912pxy_s.thread.bufld.Init();
 	d912pxy_s.pool.upload.Init();
 	d912pxy_s.pool.vstream.Init();
-	d912pxy_s.pool.surface.Init();
+	d912pxy_s.pool.surface.Init(D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES);
+	d912pxy_s.pool.rtds.Init(D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES);
 	d912pxy_s.thread.cleanup.Init();	
 }
 
@@ -197,6 +198,7 @@ void d912pxy_device::InitComPatches()
 	if (d912pxy_s.config.GetValueUI32(PXY_CFG_COMPAT_TRACK_RS))
 	{
 		d912pxy_com_route_set(PXY_COM_ROUTE_DEVICE, PXY_COM_METHOD_DEV_SETRENDERSTATE, &d912pxy_device::com_SetRenderState_Tracked);
+		d912pxy_com_route_set(PXY_COM_ROUTE_DEVICE, PXY_COM_METHOD_DEV_SETSAMPLERSTATE, &d912pxy_device::com_SetSamplerState_Tracked);
 	}
 
 	if (!d912pxy_s.config.GetValueUI64(PXY_CFG_SDB_KEEP_PAIRS))

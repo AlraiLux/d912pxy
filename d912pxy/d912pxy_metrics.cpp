@@ -82,9 +82,14 @@ void d912pxy_metrics::Init()
 	iframeMetrics->Create(TM("mem / watched"), 0, 0, 65535, 0, 1, &metricMemWatched);
 	iframeMetrics->Create(TM("derived / overhead"), 0, 0, 60000, 60000, 1, &metricOverhead);
 
+	iframeMetrics->Create(TM("mem / VRAM shared"), 0, 0, 1024 * 5, 1024 * 15, 1, &metricVRAMShared);
+	iframeMetrics->Create(TM("mem / VRAM"), 0, 0, 1024 * 5, 1024 * 15, 1, &metricVRAM);
+
 	iframeMetrics->Create(TM("derived / prep per batch"), 0, 0, 3000, 2000, 1, &metricIFramePerBatchPrep);
 	iframeMetrics->Create(TM("derived / overhead per batch"), 0, 0, 3000, 2000, 1, &metricIFramePerBatchOverhead);
 	iframeMetrics->Create(TM("derived / app prep"), 0, 0, 10000, 10000, 1, &metricIFrameAppPrep);
+
+	iframeMetrics->Create(TM("thread / gpu"), 0, 0, 10000, 10000, 1, &metricGPUTime);
 
 	for (int i = 0; i != MAX_OVERHEAD_STR_ID; ++i)
 	{
@@ -145,6 +150,11 @@ void d912pxy_metrics::TrackDHeapSlots(UINT idx, UINT slots)
 	dheapMetrics->Add(metricDHeapSlots[idx], slots);
 }
 
+void d912pxy_metrics::TrackGPUTime(UINT64 usTime)
+{
+	iframeMetrics->Add(metricGPUTime, usTime);
+}
+
 void d912pxy_metrics::TrackDrawCount(UINT draws)
 {
 	iframeMetrics->Add(metricIFrameDraws, draws);
@@ -157,8 +167,7 @@ void d912pxy_metrics::TrackCleanupCount(UINT cleanups)
 }
 
 void d912pxy_metrics::TrackUploadMemUsage()
-{
-	iframeMetrics->Add(metricMemUl, d912pxy_s.pool.upload.GetMemoryInPoolMb());
+{	
 	iframeMetrics->Add(metricMemUlFp[0], d912pxy_s.thread.bufld.GetMemFootprintMB());
 	iframeMetrics->Add(metricMemUlFp[1], d912pxy_s.thread.texld.GetMemFootprintMB());
 	iframeMetrics->Add(metricMemUlFp[2], d912pxy_s.thread.bufld.GetMemFootprintAlignedMB());
@@ -203,6 +212,19 @@ void d912pxy_metrics::FlushIFrameValues()
 	iframeMetrics->Add(metricMemWatched, d912pxy_s.thread.cleanup.TotalWatchedItems());
 	iframeMetrics->Add(metricMemVStream, d912pxy_s.pool.vstream.GetMemoryInPoolMb());
 	iframeMetrics->Add(metricMemSurf, d912pxy_s.pool.surface.GetPoolSizeMB());
+	iframeMetrics->Add(metricMemUl, d912pxy_s.pool.upload.GetMemoryInPoolMb());
+
+	iframeMetrics->Add(metricVRAM,		
+		d912pxy_s.pool.surface.GetPoolSizeMB() +
+		d912pxy_s.pool.vstream.GetMemoryInPoolMb()
+		+ ((PXY_BATCH_STREAM_SIZE + PXY_BATCH_GPU_BUFFER_SIZE) >> 20)
+	);
+
+	iframeMetrics->Add(metricVRAMShared,
+		d912pxy_s.pool.upload.GetMemoryInPoolMb() +
+		+ ((PXY_BATCH_STREAM_SIZE) >> 20)
+	);
+
 	
 }
 

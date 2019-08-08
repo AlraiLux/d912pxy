@@ -28,8 +28,6 @@ SOFTWARE.
 
 HRESULT d912pxy_device::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget)
 { 
-	LOG_DBG_DTDM(__FUNCTION__);
-	
 	if (RenderTargetIndex >= PXY_INNER_MAX_RENDER_TARGETS)
 		return D3DERR_INVALIDCALL;
 
@@ -67,8 +65,6 @@ HRESULT d912pxy_device::SetRenderTarget_Compat(DWORD RenderTargetIndex, IDirect3
 
 HRESULT d912pxy_device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget)
 { 
-	LOG_DBG_DTDM(__FUNCTION__);
-
 	*ppRenderTarget = PXY_COM_CAST_(IDirect3DSurface9, d912pxy_s.render.iframe.GetBindedSurface(RenderTargetIndex + 1));
 	(*ppRenderTarget)->AddRef();
 
@@ -77,8 +73,6 @@ HRESULT d912pxy_device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurfac
 
 HRESULT d912pxy_device::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil)
 { 
-	LOG_DBG_DTDM("depth surface set to %016llX", pNewZStencil);
-	
 	d912pxy_s.render.iframe.BindSurface(0, PXY_COM_LOOKUP(pNewZStencil, surface));
 
 	return D3D_OK; 
@@ -86,8 +80,6 @@ HRESULT d912pxy_device::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil)
 
 HRESULT d912pxy_device::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface)
 { 
-	LOG_DBG_DTDM(__FUNCTION__);
-
 	*ppZStencilSurface = PXY_COM_CAST_(IDirect3DSurface9, d912pxy_s.render.iframe.GetBindedSurface(0));
 	(*ppZStencilSurface)->AddRef();	
 
@@ -95,13 +87,12 @@ HRESULT d912pxy_device::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSur
 }
 
 HRESULT d912pxy_device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface)
-{
-	LOG_DBG_DTDM(__FUNCTION__);
-
+{	
 	d912pxy_surface* src = PXY_COM_LOOKUP(pRenderTarget, surface);
-	d912pxy_surface* dst = PXY_COM_LOOKUP(pDestSurface, surface);
-	src->BCopyTo(dst, 3, d912pxy_s.dx12.cl->GID(CLG_SEQ));
-
+	d912pxy_surface* dst = d912pxy_surface::CorrectLayerRepresent(PXY_COM_CAST(d912pxy_com_object, pDestSurface));
+	   
+	d912pxy_s.render.replay.StretchRect(src, dst);
+	
 	dst->CopySurfaceDataToCPU();
 
 	return D3D_OK;
@@ -109,7 +100,10 @@ HRESULT d912pxy_device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, ID
 
 HRESULT d912pxy_device::StretchRect(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter)
 {	
-	d912pxy_s.render.replay.StretchRect(PXY_COM_LOOKUP(pSourceSurface, surface), PXY_COM_LOOKUP(pDestSurface, surface));
+	d912pxy_s.render.replay.StretchRect(
+		d912pxy_surface::CorrectLayerRepresent(PXY_COM_CAST(d912pxy_com_object, pSourceSurface)),
+		d912pxy_surface::CorrectLayerRepresent(PXY_COM_CAST(d912pxy_com_object, pDestSurface))				
+	);
 
 	return D3D_OK;
 }
@@ -123,8 +117,6 @@ HRESULT d912pxy_device::Clear_Emulated(DWORD Count, const D3DRECT * pRects, DWOR
 
 HRESULT d912pxy_device::Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 {	
-	LOG_DBG_DTDM("Clear Rects: %u", Count);
-	
 	if (Flags & D3DCLEAR_TARGET)
 	{
 		float fvColor[4] =

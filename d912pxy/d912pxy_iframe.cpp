@@ -173,12 +173,17 @@ UINT d912pxy_iframe::CommitBatchPreCheck(D3DPRIMITIVETYPE PrimitiveType)
 		return 0;
 	}
 
+#ifdef PER_DRAW_FLUSH
+	if (batchesIssued >= 1)
+		StateSafeFlush(0);
+#else
 	if (batchesIssued >= (PXY_INNER_MAX_IFRAME_BATCH_COUNT - 2))
 	{
 		LOG_ERR_DTDM("batches in one frame exceeded PXY_INNER_MAX_IFRAME_BATCH_COUNT, performing queued commands now");
 
 		StateSafeFlush(0);
 	}
+#endif
 
 	return 1;
 }
@@ -388,6 +393,10 @@ void d912pxy_iframe::Start()
 	SetViewport(&main_viewport);
 	//SetScissors(&main_scissor);
 
+	//megai2: restore RS & blendfactor on replay thread command list
+	d912pxy_s.render.db.pso.State(D3DRS_STENCILREF, d912pxy_s.render.db.pso.GetDX9RsValue(D3DRS_STENCILREF));
+	d912pxy_s.render.db.pso.State(D3DRS_BLENDFACTOR, d912pxy_s.render.db.pso.GetDX9RsValue(D3DRS_BLENDFACTOR));
+
 	SetRSigOnList(CLG_TOP);
 	SetRSigOnList(CLG_SEQ);
 
@@ -529,6 +538,11 @@ void d912pxy_iframe::SetRSigOnList(d912pxy_gpu_cmd_list_group lstID)
 	cl->SetGraphicsRootDescriptorTable(1, mHeaps[PXY_INNER_HEAP_SRV]->GetGPUDHeapHandle(0));
 	cl->SetGraphicsRootDescriptorTable(2, mHeaps[PXY_INNER_HEAP_SPL]->GetGPUDHeapHandle(0));
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//megai2: keep this commented out 
+	/*static const float white[4] = { 1,1,1,1 };
+	
+	cl->OMSetBlendFactor(white);*/
 
 }
 

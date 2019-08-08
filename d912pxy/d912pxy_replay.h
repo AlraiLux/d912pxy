@@ -142,6 +142,8 @@ typedef struct d912pxy_replay_pso_raw_feedback {
 typedef struct d912pxy_replay_rect {
 	d912pxy_surface* src;
 	d912pxy_surface* dst;
+	D3D12_RESOURCE_STATES prevS;
+	D3D12_RESOURCE_STATES prevD;
 } d912pxy_replay_rect;
 
 typedef struct d912pxy_replay_pso_compiled {
@@ -190,8 +192,8 @@ typedef struct d912pxy_replay_item {
 
 typedef struct d912pxy_replay_thread_transit_data {
 	d912pxy_surface* surfBind[2];
-	UINT32 srefStk;
-	UINT32 bfacStk;
+	DWORD srefVal;
+	DWORD bfacVal;
 	
 	d912pxy_device_streamsrc streams[PXY_INNER_MAX_VBUF_STREAMS];
 	d912pxy_vstream* indexBuf;
@@ -315,9 +317,6 @@ private:
 
 	d912pxy_replay_thread* threads[PXY_INNER_REPLAY_THREADS_MAX];
 	LONG stopMarker;
-
-	d912pxy_thread_lock gpuw_sync;
-	d912pxy_ringbuffer<d912pxy_replay_gpu_write_control*>* gpuw_que;
 
 #ifdef _DEBUG
 	d912pxy_thread_lock simThreadAcc;

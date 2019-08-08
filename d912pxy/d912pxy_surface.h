@@ -68,6 +68,7 @@ public:
 	void DelayedLoad(void* mem, UINT lv);
 	
 	size_t GetFootprintMemSz();
+	size_t GetFootprintMemSzRaw();
 	size_t GetFootprintMemSzDX9();
 	UINT GetWPitchDX9(UINT lv);
 	UINT GetWPitchLV(UINT lv);
@@ -80,14 +81,18 @@ public:
 	
 	void initInternalBuf();
 	void UpdateDescCache();
-	UINT32 AllocateSRV();
+	UINT32 AllocateSRV(ID3D12Resource* resPtr);
 	void AllocateLayers();
 	void FreeLayers();
 	void FreeObjAndSlot();
 
 	void FinishUpload();
 
+	void ConstructResource();
+
 	static UINT32 threadedCtor;
+
+	static d912pxy_surface* CorrectLayerRepresent(d912pxy_com_object* obj);
 
 private:
 	d912pxy_surface(UINT Width, UINT Height, D3DFORMAT Format, DWORD Usage, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, UINT* levels, UINT arrSz, UINT32* srvFeedback);

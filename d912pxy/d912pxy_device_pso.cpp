@@ -28,18 +28,13 @@ SOFTWARE.
 
 HRESULT d912pxy_device::SetRenderState_Tracked(D3DRENDERSTATETYPE State, DWORD Value)
 {
-	d912pxy_s.render.db.pso.TrackState(State, Value);
-	return SetRenderState(State, Value);
+	d912pxy_s.render.db.pso.SetStateTracked(State, Value);
+	return D3D_OK;
 }
 
 
 HRESULT d912pxy_device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
-{ 
-	LOG_DBG_DTDM("RS %u = %u", State, Value);
-	
-	/*if (State > D3DRS_BLENDOPALPHA)
-		return D3DERR_INVALIDCALL;*/
-
+{ 			
 	switch (State)
 	{
 		case D3DRS_ENABLE_D912PXY_API_HACKS:
@@ -60,33 +55,16 @@ HRESULT d912pxy_device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 			else {
 				d912pxy_s.render.tex.AddDirtyFlag(Value);
 			}
-		break;
-		case D3DRS_BLENDFACTOR:
-		{
-			DWORD Color = Value;
-
-			float fvClra[4];
-
-			for (int i = 0; i != 4; ++i)
-			{
-				fvClra[i] = ((Color >> (i << 3)) & 0xFF) / 255.0f;
-			}
-
-			d912pxy_s.render.replay.OMBlendFac(fvClra);
-		}
-		break; //193,   /* D3DCOLOR used for a constant blend factor during alpha blending for devices that support D3DPBLENDCAPS_BLENDFACTOR */
-					
+		break;					
 		default:
-			d912pxy_s.render.db.pso.State(State,Value);
+			d912pxy_s.render.db.pso.SetState(State,Value);
 	}
 	
 	return D3D_OK; 
 }
 
 HRESULT d912pxy_device::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue)
-{ 
-	LOG_DBG_DTDM(__FUNCTION__);
-		
+{ 		
 	switch (State)
 	{
 	case D3DRS_D912PXY_ENQUEUE_PSO_COMPILE:
@@ -111,20 +89,12 @@ HRESULT d912pxy_device::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue)
 
 HRESULT d912pxy_device::BeginStateBlock(void) 
 { 
-	LOG_DBG_DTDM(__FUNCTION__);
 	return D3D_OK; 
 }
 
 HRESULT d912pxy_device::EndStateBlock(IDirect3DStateBlock9** ppSB) 
-{ 
-	LOG_DBG_DTDM(__FUNCTION__);
-
-	
-			
+{ 			
 	*ppSB = PXY_COM_CAST_(IDirect3DStateBlock9, d912pxy_sblock::d912pxy_sblock_com(D3DSBT_ALL));
-
-	
-
 	return D3D_OK; 
 }
 

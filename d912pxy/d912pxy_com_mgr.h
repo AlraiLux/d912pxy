@@ -44,6 +44,9 @@ typedef enum d912pxy_com_obj_typeid {
 	PXY_COM_OBJ_RESOURCE = 15,
 } d912pxy_com_obj_typeid;
 
+#define PXY_COM_OBJ_SIGNATURE_SURFACE_LAYER 0x80000000
+#define PXY_COM_OBJ_SIGNATURE_TEXTURE_RTDS 0x10000000
+
 #define PXY_COM_OBJ_UNMANAGED PXY_COM_OBJ_COUNT
 
 #define PXY_INNER_COM_MGR_VA_MASK_BITS 32
@@ -63,6 +66,8 @@ public:
 	d912pxy_com_object* GetComObject(d912pxy_com_obj_typeid type, d912pxy_mem_va_table_obj_id id);
 
 	d912pxy_com_object* GetComObjectByLowAdr(UINT32 lowAdr);
+
+	d912pxy_com_obj_typeid GetTypeIdFromAdr(d912pxy_com_object* obj);
 
 private:
 	d912pxy_mem_va_table table;

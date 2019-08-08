@@ -130,6 +130,10 @@ private:
 #define PXY_PSO_CACHE_KEYFILE_WRITE 2
 #define PXY_PSO_CACHE_KEYFILE_READ 1
 
+typedef struct fv4Color {
+	float val[4];
+} fv4Color;
+
 class d912pxy_pso_cache :
 	public d912pxy_noncom, public d912pxy_thread
 {
@@ -141,7 +145,10 @@ public:
 
 	//things that affect pso only
 	void State(D3DRENDERSTATETYPE State, DWORD Value);
-	void TrackState(D3DRENDERSTATETYPE State, DWORD Value);
+
+	void SetState(D3DRENDERSTATETYPE State, DWORD Value);
+	void SetStateTracked(D3DRENDERSTATETYPE State, DWORD Value);
+
 	void VShader(d912pxy_shader* vs);
 	void PShader(d912pxy_shader* ps);
 	void IAFormat(d912pxy_vdecl* vertexDcl);
@@ -194,6 +201,9 @@ public:
 	void SaveKeyToCache(UINT64 id, d912pxy_trimmed_dx12_pso * dsc);
 
 	UINT32 GetHashedKey(d912pxy_trimmed_dx12_pso * dsc);
+
+	fv4Color TransformBlendFactor(DWORD val);
+	DWORD TransformBlend2AlphaBlend(DWORD val);
 
 private:
 	d912pxy_memtree2* cacheIndexes;

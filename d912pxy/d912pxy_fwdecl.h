@@ -48,12 +48,18 @@ SOFTWARE.
 
 #define UPLOAD_POOL_USE_AND_DISCARD 
 //#define ENABLE_METRICS
-//#define PER_BATCH_FLUSH_DEBUG 1
+//#define PER_DRAW_FLUSH 
 //#define USE_PIX_EVENT_ANNOTATIONS
 
-#ifdef _DEBUG
-	#define ENABLE_METRICS
+//#define THREAD_FAST_WAKE
+#define THREAD_MODEST_WAKE
+
+#ifdef _DEBUG	
 	#define ENABLE_DEBUG_LOGGING
+#endif
+
+#ifdef ENABLE_DEBUG_LOGGING
+	#define ENABLE_METRICS
 #endif
 
 //inner max/structure defenitions =======================
@@ -110,6 +116,18 @@ SOFTWARE.
 #define PXY_INNER_THREADID_MAX 6
 
 #define PXY_INNER_REPLAY_THREADS_MAX 4
+
+#ifdef THREAD_MODEST_WAKE
+	#define PXY_WAKE_FACTOR_TEXTURE 1
+	#define PXY_WAKE_FACTOR_BUFFER 10
+	#define PXY_WAKE_FACTOR_REPLAY 100
+#endif
+
+#ifdef THREAD_FAST_WAKE
+	#define PXY_WAKE_FACTOR_TEXTURE 1
+	#define PXY_WAKE_FACTOR_BUFFER 1
+	#define PXY_WAKE_FACTOR_REPLAY 10
+#endif
 
 //memory manager ============================
 
@@ -205,6 +223,7 @@ SOFTWARE.
 		#define LOG_DBG_DTDM3(fmt, ...) (d912pxy_s.log.text._PXY_LOG_DEBUG(LGC_DEFAULT, TM(fmt), __VA_ARGS__))
 		#define LOG_DX_SET_NAME(obj, val) obj->SetName(val)
 		#define LOG_ASSERT(cnd, text) if (!cnd) LOG_ERR_THROW2(-1, text)
+        #define PER_DRAW_FLUSH 
 	#endif
 #else
 	#define LOG_DBG_DTDM(fmt, ...) ;

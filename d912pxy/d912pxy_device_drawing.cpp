@@ -30,14 +30,11 @@ SOFTWARE.
 
 HRESULT d912pxy_device::BeginScene(void)
 {
-	LOG_DBG_DTDM(__FUNCTION__);
 	return D3D_OK;
 }
 
 HRESULT d912pxy_device::EndScene(void)
 {
-	LOG_DBG_DTDM(__FUNCTION__);
-
 	d912pxy_s.render.iframe.EndSceneReset();
 
 	return D3D_OK;
@@ -47,8 +44,6 @@ HRESULT d912pxy_device::EndScene(void)
 
 HRESULT d912pxy_device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
 { 
-	LOG_DBG_DTDM(__FUNCTION__);
-
 	if (1)
 	{
 		LOG_DBG_DTDM3("DP NON INDEXED SKIPPING");
@@ -57,9 +52,7 @@ HRESULT d912pxy_device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT Start
 }
 
 HRESULT d912pxy_device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
-{ 
-	LOG_DBG_DTDM("DrawIndexed PT %u BV %u MV %u NV %u SI %u PC %u", PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
-	
+{ 	
 	d912pxy_s.render.iframe.CommitBatch(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
 #ifdef PER_BATCH_FLUSH_DEBUG
@@ -76,8 +69,6 @@ HRESULT d912pxy_device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT
 
 HRESULT d912pxy_device::DrawIndexedPrimitive_Compat(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 {
-	
-
 	d912pxy_s.render.iframe.CommitBatch2(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
 #ifdef PER_BATCH_FLUSH_DEBUG
@@ -109,7 +100,7 @@ HRESULT d912pxy_device::DrawIndexedPrimitive_PS(D3DPRIMITIVETYPE PrimitiveType, 
 #endif
 
 	for (int i = 0; i != 32; ++i)
-		if (stageFormatsTrack[i] == D3DFMT_D24X8)
+		if ((stageFormatsTrack[i] == D3DFMT_D24X8) || (stageFormatsTrack[i] == D3DFMT_D24S8))
 		{
 			if (d912pxy_s.render.db.pso.GetPShader())
 				TrackShaderCodeBugs(PXY_INNER_SHDR_BUG_PCF_SAMPLER, i + 1, d912pxy_s.render.db.pso.GetPShader()->GetID());

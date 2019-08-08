@@ -42,8 +42,6 @@ d912pxy_replay::d912pxy_replay()
 
 d912pxy_replay::~d912pxy_replay()
 {	
-	if (numThreads > 1)
-		delete gpuw_que;
 }
 
 void d912pxy_replay::Init()
@@ -101,14 +99,9 @@ void d912pxy_replay::Init()
 	replay_handlers[DRPL_QUMA] = (d912pxy_replay_handler_func)&d912pxy_replay::RHA_QUMA;
 
 	if (numThreads > 1)
-	{
-		gpuw_que = new d912pxy_ringbuffer<d912pxy_replay_gpu_write_control*>(maxReplayItems, 0);
 		replay_handlers[DRPL_GPUW] = (d912pxy_replay_handler_func)&d912pxy_replay::RHA_GPUW_MT;
-	}
-	else {
-		gpuw_que = NULL;
-		replay_handlers[DRPL_GPUW] = (d912pxy_replay_handler_func)&d912pxy_replay::RHA_GPUW;
-	}
+	else
+		replay_handlers[DRPL_GPUW] = (d912pxy_replay_handler_func)&d912pxy_replay::RHA_GPUW;	
 }
 
 UINT d912pxy_replay::StateTransit(d912pxy_resource * res, D3D12_RESOURCE_STATES to)
@@ -237,24 +230,14 @@ void d912pxy_replay::IBbind(d912pxy_vstream * buf)
 
 void d912pxy_replay::StretchRect(d912pxy_surface * src, d912pxy_surface * dst)
 {
-	if (!src->GetD12Obj() || !dst->GetD12Obj())
-		return;
-
-	D3D12_RESOURCE_STATES prevS = src->GetCurrentState();
-	D3D12_RESOURCE_STATES prevD = dst->GetCurrentState();
-
-	StateTransit(src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	StateTransit(dst, D3D12_RESOURCE_STATE_COPY_DEST);
-
 	REPLAY_STACK_GET(DRPL_RECT);
 
 	it->srect.src = src;
 	it->srect.dst = dst;
-
-	REPLAY_STACK_INCREMENT;
-
-	StateTransit(src, prevS);
-	StateTransit(dst, prevD);
+	it->srect.prevS = src->GetCurrentState();
+	it->srect.prevD = dst->GetCurrentState();
+	
+	REPLAY_STACK_INCREMENT;	
 }
 
 void d912pxy_replay::GPUW(UINT32 si, UINT16 of, UINT16 cnt, UINT16 bn)
@@ -265,11 +248,6 @@ void d912pxy_replay::GPUW(UINT32 si, UINT16 of, UINT16 cnt, UINT16 bn)
 	it->gpuw_ctl.size = cnt;
 	it->gpuw_ctl.offset = of;
 	it->gpuw_ctl.streamIdx = si;
-
-	if (gpuw_que)
-	{
-		gpuw_que->WriteElementFast(&it->gpuw_ctl);
-	}
 
 	REPLAY_STACK_INCREMENT;
 }
@@ -470,7 +448,7 @@ void d912pxy_replay::IssueWork(UINT batch)
 		threads[cWorker]->SignalWork();
 		
 	}
-	else if ((batch % 100) == 0) {
+	else if ((batch % PXY_WAKE_FACTOR_REPLAY) == 0) {
 		SyncStackTop();
 		threads[cWorker]->SignalWork();
 	}
@@ -573,8 +551,8 @@ void d912pxy_replay::SaveCLState(UINT thread)
 {
 	d912pxy_replay_thread_transit_data* trd = &transitData[thread];
 
-	trd->bfacStk = lastBFactorStk;
-	trd->srefStk = lastSRefStk;
+	trd->bfacVal = d912pxy_s.render.db.pso.GetDX9RsValue(D3DRS_BLENDFACTOR);
+	trd->srefVal = d912pxy_s.render.db.pso.GetDX9RsValue(D3DRS_STENCILREF);
 
 	trd->surfBind[0] = d912pxy_s.render.iframe.GetBindedSurface(0);
 	trd->surfBind[1] = d912pxy_s.render.iframe.GetBindedSurface(1);
@@ -654,11 +632,20 @@ void d912pxy_replay::TransitCLState(ID3D12GraphicsCommandList * cl, UINT base, U
 	streamBind.ib.buf = trd->indexBuf;
 	PlayId(&streamBind, cl, context);
 
-	if (trd->srefStk != -1)	
-		PlayId(&stack[trd->srefStk], cl, context);
 
-	if (trd->bfacStk != -1)
-		PlayId(&stack[trd->bfacStk], cl, context);
+	d912pxy_replay_item sbVal;
+
+	sbVal.type = DRPL_OMSR;
+	sbVal.omsr.dRef = trd->srefVal;
+
+	PlayId(&sbVal, cl, context);
+
+	sbVal.type = DRPL_OMBF;
+
+	fv4Color bfColor = d912pxy_s.render.db.pso.TransformBlendFactor(trd->bfacVal);
+	memcpy(sbVal.ombf.color, bfColor.val, 16);
+
+	PlayId(&sbVal, cl, context);
 
 	d912pxy_replay_item psoSet;
 
@@ -805,17 +792,23 @@ void d912pxy_replay::RHA_RECT(d912pxy_replay_rect* it, ID3D12GraphicsCommandList
 
 	dSrc = sSrc->GetDX9DescAtLevel(0);
 	dDst = sDst->GetDX9DescAtLevel(0);
-
+	
 	if (
 		(dSrc.Height == dDst.Height) &&
 		(dSrc.Width == dDst.Width) &&
 		(dSrc.Format == dDst.Format)
 		)
 	{
-		sSrc->ACopyTo(sDst, cl);
+		if (!sSrc->GetD12Obj())
+			sSrc->ConstructResource();
+
+		if (!sDst->GetD12Obj())
+			sDst->ConstructResource();
+
+		sSrc->BCopyToWStates(sDst, 0x3, cl, it->prevD, it->prevS);
 	} else {
 		//megai2: TODO allow non similar texture copy via custom pass
-		;
+		LOG_ERR_DTDM("rha rect with different textures");
 	}
 }
 
@@ -826,9 +819,7 @@ void d912pxy_replay::RHA_GPUW(d912pxy_replay_gpu_write_control * it, ID3D12Graph
 
 void d912pxy_replay::RHA_GPUW_MT(d912pxy_replay_gpu_write_control * it, ID3D12GraphicsCommandList * cl, void ** unused)
 {
-	gpuw_sync.Hold();
-	RHA_GPUW(gpuw_que->PopElementFast(), cl, unused);
-	gpuw_sync.Release();
+	d912pxy_s.render.batch.GPUWriteControlMT(it->streamIdx, it->offset, it->size, it->bn);
 }
 
 void d912pxy_replay::RHA_PRMT(d912pxy_replay_primitive_topology * it, ID3D12GraphicsCommandList * cl, void ** unused)

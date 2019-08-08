@@ -34,7 +34,7 @@ HRESULT d912pxy_device::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture)
 
 	if (pTexture)
 	{
-		srvId = PXY_COM_LOOKUP_(pTexture, basetex).GetSRVHeapId((intptr_t)pTexture & 0x10000000);
+		srvId = PXY_COM_LOOKUP_(pTexture, basetex).GetSRVHeapId((intptr_t)pTexture & PXY_COM_OBJ_SIGNATURE_TEXTURE_RTDS);
 	}
 
 	d912pxy_s.render.tex.SetTexture(Stage, (UINT32)srvId);
@@ -44,15 +44,13 @@ HRESULT d912pxy_device::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture)
 
 HRESULT d912pxy_device::SetTexture_PS(DWORD Stage, IDirect3DBaseTexture9* pTexture)
 {
-	
-
 	Stage = (Stage & 0xF) + 16 * ((Stage >> 4) != 0);
 
 	UINT64 srvId = 0;//megai2: make this to avoid memory reading. but we must be assured that mNullTextureSRV is equal to this constant!
 
 	if (pTexture)
 	{
-		srvId = (PXY_COM_LOOKUP(pTexture, basetex))->GetSRVHeapId((intptr_t)pTexture & 0x10000000);
+		srvId = (PXY_COM_LOOKUP(pTexture, basetex))->GetSRVHeapId((intptr_t)pTexture & PXY_COM_OBJ_SIGNATURE_TEXTURE_RTDS);
 	}
 
 	d912pxy_s.render.tex.SetTexture(Stage, (UINT32)srvId);
@@ -66,22 +64,23 @@ HRESULT d912pxy_device::SetTexture_PS(DWORD Stage, IDirect3DBaseTexture9* pTextu
 	else
 		stageFormatsTrack[Stage] = D3DFMT_UNKNOWN;
 
-	
-
 	return D3D_OK;
 }
 
 HRESULT d912pxy_device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
-{ 
-	
-
-	LOG_DBG_DTDM("Sampler[%u][%u] = %u", Sampler, Type, Value);
-
+{ 	
 	Sampler = (Sampler & 0xF) + 16 * (Sampler >= D3DDMAPSAMPLER);
 
 	d912pxy_s.render.tex.ModSampler(Sampler, Type, Value);
-
 	
+	return D3D_OK;
+}
+
+HRESULT d912pxy_device::SetSamplerState_Tracked(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
+{
+	Sampler = (Sampler & 0xF) + 16 * (Sampler >= D3DDMAPSAMPLER);
+
+	d912pxy_s.render.tex.ModSampler(Sampler, Type, Value);
 
 	return D3D_OK;
 }

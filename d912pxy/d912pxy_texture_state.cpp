@@ -2,13 +2,11 @@
 
 d912pxy_texture_state::d912pxy_texture_state() 
 {
-
+	memset(DX9SSTValues, 7, sizeof(DWORD)*(D3DSAMP_DMAPOFFSET+1));
 }
 
 d912pxy_texture_state::~d912pxy_texture_state()
 {
-	
-
 	splLookup->Begin();
 
 	while (!splLookup->IterEnd())
@@ -53,6 +51,8 @@ void d912pxy_texture_state::SetTexture(UINT stage, UINT srv)
 {
 	current.dirty |= 1ULL << (stage >> 2);
 	current.texHeapID[stage] = srv;
+
+	LOG_DBG_DTDM("tex[%u] = %u", stage, srv);
 }
 
 void d912pxy_texture_state::ModStageBit(UINT stage, UINT bit, UINT set)
@@ -68,10 +68,23 @@ void d912pxy_texture_state::ModStageBit(UINT stage, UINT bit, UINT set)
 	current.dirty |= 1ULL << (stage >> 2);
 
 	current.texHeapID[stage] = val;
+
+	LOG_DBG_DTDM("tex[%u] = %u", stage, val);
+}
+
+void d912pxy_texture_state::ModSamplerTracked(UINT stage, D3DSAMPLERSTATETYPE state, DWORD value)
+{
+	if (DX9SSTValues[state] != value)
+	{
+		ModSampler(stage, state, value);
+		DX9SSTValues[state] = value;
+	}
 }
 
 void d912pxy_texture_state::ModSampler(UINT stage, D3DSAMPLERSTATETYPE state, DWORD value)
 {
+	LOG_DBG_DTDM("Sampler[%u][%u] = %u", stage, state, value);
+
 	d912pxy_trimmed_sampler_dsc* cDesc = &trimmedSpl[stage];
 	current.dirty |= 1ULL << (stage + 8);		
 
@@ -193,8 +206,8 @@ void d912pxy_texture_state::UpdateFullSplDsc(UINT from)
 
 		UINT minF = ((0x2 & dx9FilterName) != 0);
 		UINT magF = ((0x10 & dx9FilterName) != 0);
-		UINT mipF = (((0x40 & dx9FilterName) != 0));
-
+		UINT mipF = (((0x80 & dx9FilterName) != 0));
+		
 		//special hack for PCF filter
 		if ((0x7 & dx9FilterName) == 0)
 		{
